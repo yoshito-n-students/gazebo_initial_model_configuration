@@ -10,6 +10,34 @@
 
 namespace gazebo {
 
+//
+// Note:
+//   This should be a world plugin, not a model plugin
+//   because actual joint names are unknown at the layer of model description.
+//   
+//   ex.
+//   [robot.sdf]
+//      <model name="robot">
+//          ...
+//          <plugin name="a_model_plugin">
+//              <joint>
+//                  <name>a_joint</name>
+//                  <position>3.14</position>
+//              </joint>
+//          </plugin>
+//      </model>
+//
+//   [super_robot.sdf]
+//      <model name="super_robot">
+//          <!-- the model plugin cannot find a_joint because its name becomes embedded_robot::a_joint ! -->
+//          <include>
+//              <name>embedded_robot</name>
+//              <uri>model://robot</uri>
+//          </include>
+//          ...
+//      </model>
+//
+
 class InitialModelConfiguration : public WorldPlugin {
 public:
   void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf) override {
