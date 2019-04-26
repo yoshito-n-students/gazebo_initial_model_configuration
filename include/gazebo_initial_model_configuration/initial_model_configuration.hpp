@@ -14,7 +14,7 @@ namespace gazebo {
 // Note:
 //   This should be a world plugin, not a model plugin
 //   because actual joint names are unknown at the layer of model description.
-//   
+//
 //   ex.
 //   [robot.sdf]
 //      <model name="robot">
@@ -29,8 +29,8 @@ namespace gazebo {
 //
 //   [super_robot.sdf]
 //      <model name="super_robot">
-//          <!-- the model plugin cannot find a_joint because its name becomes embedded_robot::a_joint ! -->
-//          <include>
+//          <!-- the model plugin cannot find a_joint because its name becomes
+//          embedded_robot::a_joint ! --> <include>
 //              <name>embedded_robot</name>
 //              <uri>model://robot</uri>
 //          </include>
@@ -48,8 +48,13 @@ public:
 
     // find the model from the [model] element
     GZ_ASSERT(_sdf->HasElement("model"), "No [model] element");
+#if GAZEBO_MAJOR_VERSION >= 8
     const physics::ModelPtr model(
         _world->ModelByName(_sdf->GetElement("model")->Get< std::string >()));
+#else
+    const physics::ModelPtr model(
+        _world->GetModel(_sdf->GetElement("model")->Get< std::string >()));
+#endif
     GZ_ASSERT(model, "Cannot find a model with the value of [model] element");
     std::cout << "[" << plugin_name << "]:"
               << " Found the target model \"" << model->GetScopedName() << "\"" << std::endl;
