@@ -8,6 +8,8 @@
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
 
+#include <ros/package.h>
+
 namespace gazebo {
 
 //
@@ -29,8 +31,9 @@ namespace gazebo {
 //
 //   [super_robot.sdf]
 //      <model name="super_robot">
-//          <!-- the model plugin cannot find a_joint because its name becomes
-//          embedded_robot::a_joint ! --> <include>
+//          <!-- the model plugin cannot find a_joint               -->
+//          <!-- because its name becomes embedded_robot::a_joint ! -->
+//          <include>
 //              <name>embedded_robot</name>
 //              <uri>model://robot</uri>
 //          </include>
@@ -41,19 +44,20 @@ namespace gazebo {
 class InitialModelConfiguration : public WorldPlugin {
 public:
   void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf) override {
-    const std::string plugin_name(_sdf->GetAttribute("name")->GetAsString());
+    // assert the given sdf matches the plugin format.
+    const sdf::ElementPtr formatted_sdf(FormatAsPluginSDF(_sdf));
 
+    const std::string plugin_name(formatted_sdf->GetAttribute("name")->GetAsString());
     std::cout << "[" << plugin_name << "]:"
               << " Start loading plugin" << std::endl;
 
     // find the model from the [model] element
-    GZ_ASSERT(_sdf->HasElement("model"), "No [model] element");
 #if GAZEBO_MAJOR_VERSION >= 8
     const physics::ModelPtr model(
-        _world->ModelByName(_sdf->GetElement("model")->Get< std::string >()));
+        _world->ModelByName(formatted_sdf->GetElement("model")->Get< std::string >()));
 #else
     const physics::ModelPtr model(
-        _world->GetModel(_sdf->GetElement("model")->Get< std::string >()));
+        _world->GetModel(formatted_sdf->GetElement("model")->Get< std::string >()));
 #endif
     GZ_ASSERT(model, "Cannot find a model with the value of [model] element");
     std::cout << "[" << plugin_name << "]:"
@@ -61,16 +65,28 @@ public:
 
     // load joint map (name -> position) from the [joint] elements
     std::map< std::string, double > joint_positions;
-    GZ_ASSERT(_sdf->HasElement("joint"), "No [joint] element");
-    for (sdf::ElementPtr e = _sdf->GetElement("joint"); e; e = e->GetNextElement("joint")) {
-      GZ_ASSERT(e->HasElement("name"), "No [name] element under [joint] element");
-      GZ_ASSERT(e->HasElement("position"), "No [position] element under [joint] element");
-      const std::string name(e->GetElement("name")->Get< std::string >());
-      const double position(e->GetElement("position")->Get< double >());
-      joint_positions[name] = position;
+    for (sdf::ElementPtr joint_elem = formatted_sdf->GetElement("joint"); joint_elem;
+         joint_elem = joint_elem->GetNextElement("joint")) {
+      joint_positions.insert(std::make_pair(joint_elem->GetElement("name")->Get< std::string >(),
+                                            joint_elem->GetElement("position")->Get< double >()));
+    }
+
+    // assert each given joint name points a unique joint in the model
+    const std::map< std::string, physics::JointPtr > existing_joints(
+        model->GetJointController()->GetJoints());
+    for (const std::map< std::string, double >::value_type &given_joint : joint_positions) {
+      std::size_t n_found(0);
+      for (const std::map< std::string, physics::JointPtr >::value_type &existing_joint :
+           existing_joints) {
+        if (given_joint.first == existing_joint.second->GetName()) {
+          ++n_found;
+        }
+      }
+      GZ_ASSERT(n_found >= 1 , "A given joint does not exist");
+      GZ_ASSERT(n_found <= 1, "A given joint name is ambiguous");
       std::cout << "[" << plugin_name << "]:"
-                << " Will set the position of joint \"" << name << "\" to " << position
-                << std::endl;
+                << " Will set the position of joint \"" << given_joint.first << "\" to "
+                << given_joint.second << std::endl;
     }
 
     // set joint positions
@@ -79,6 +95,30 @@ public:
     // done!!
     std::cout << "[" << plugin_name << "]:"
               << " Loaded plugin" << std::endl;
+  }
+
+private:
+  // get a sdf element which has been initialized by the plugin format file.
+  // the initialied sdf may look empty but have a format information.
+  static sdf::ElementPtr InitializedPluginSDF() {
+    const sdf::ElementPtr sdf(new sdf::Element());
+    GZ_ASSERT(sdf::initFile(ros::package::getPath("gazebo_initial_model_configuration") +
+                                "/sdf/initial_model_configuration_plugin.sdf",
+                            sdf),
+              "Cannot initialize sdf by initial_model_configuration_plugin.sdf");
+    return sdf;
+  }
+
+  // merge the plugin format sdf and the given sdf.
+  // assert if the given sdf does not match the format
+  // (ex. no required element, value type mismatch, ...).
+  static sdf::ElementPtr FormatAsPluginSDF(const sdf::ElementPtr &_src) {
+    static const sdf::ElementPtr fmt(InitializedPluginSDF());
+    const sdf::ElementPtr dst(fmt->Clone());
+    GZ_ASSERT(
+        sdf::readString("<sdf version='" SDF_VERSION "'>" + _src->ToString("") + "</sdf>", dst),
+        "The given sdf does not match InitialModelConfiguration plugin format");
+    return dst;
   }
 };
 

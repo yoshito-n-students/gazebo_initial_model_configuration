@@ -1,0 +1,24 @@
+<!-- format definition for continuous track simple plugin -->
+<element name="plugin" required="1">
+    <description>the root tag</description>
+    <attribute name="name" type="string" default="__default__" required="1">
+        <description>the name of plugin instance</description>
+    </attribute>
+    <attribute name="filename" type="string" default="__default__" required="1">
+        <description>the library file of plugin. normally 'libInitialModelConfiguration.so'</description>
+    </attribute>
+
+    <element name="model" type="string" default="__default__" required="1">
+        <description>The model which joints with initial position belong to.</description>
+    </element>
+
+    <element name="joint" required="+">
+        <description>A joint with initial position</description>
+        <element name="name" type="string" default="__default__" required="1">
+            <description>The joint's scoped name</description>
+        </element>
+        <element name="position" type="double" default="0.0" required="1">
+            <description>The initial joint position</description>
+        </element>
+    </element>
+</element>
