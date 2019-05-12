@@ -9,6 +9,7 @@ project(gazebo_initial_model_configuration)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   gazebo_dev
+  roslib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -103,7 +104,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES gazebo_initial_model_configuration
-  CATKIN_DEPENDS gazebo_dev
+  CATKIN_DEPENDS gazebo_dev roslib
 #  DEPENDS system_lib
 )
 
