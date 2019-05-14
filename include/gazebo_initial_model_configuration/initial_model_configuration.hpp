@@ -71,19 +71,19 @@ public:
                                             joint_elem->GetElement("position")->Get< double >()));
     }
 
-    // assert each given joint name points a unique joint in the model
-    const std::map< std::string, physics::JointPtr > existing_joints(
+    // assert each given joint is a controllable joint belonging to the model
+    const std::map< std::string, physics::JointPtr > controllable_joints(
         model->GetJointController()->GetJoints());
     for (const std::map< std::string, double >::value_type &given_joint : joint_positions) {
-      std::size_t n_found(0);
-      for (const std::map< std::string, physics::JointPtr >::value_type &existing_joint :
-           existing_joints) {
-        if (given_joint.first == existing_joint.second->GetName()) {
-          ++n_found;
+      bool found(false);
+      for (const std::map< std::string, physics::JointPtr >::value_type &controllable_joint :
+           controllable_joints) {
+        if (given_joint.first == controllable_joint.second->GetName()) {
+          found = true;
+          break;
         }
       }
-      GZ_ASSERT(n_found >= 1 , "A given joint does not exist");
-      GZ_ASSERT(n_found <= 1, "A given joint name is ambiguous");
+      GZ_ASSERT(found, "A given joint is not controllable or does not belong to the model");
       std::cout << "[" << plugin_name << "]:"
                 << " Will set the position of joint \"" << given_joint.first << "\" to "
                 << given_joint.second << std::endl;
